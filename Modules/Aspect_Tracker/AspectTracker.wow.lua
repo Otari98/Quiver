@@ -33,11 +33,6 @@ end
 
 -- ************ UI ************
 local updateUI = function()
-	if UnitOnTaxi("player") and Quiver_Store.IsLockedFrames then
-		frame:Hide()
-		return
-	end
-
 	local activeTexture = chooseIconTexture()
 	if activeTexture then
 		frame.Icon:SetTexture(activeTexture)
@@ -49,12 +44,14 @@ local updateUI = function()
 	-- Exclude Pack from main texture, since party members can apply it.
 	-- I don't have a simple way of detecting who cast it, because
 	-- the cancellable bit is 1 even if a party member cast it.
-	if Api.Aura.PredBuffActive(Quiver.L.Spell["Aspect of the Pack"]) then
-		frame:SetBackdropBorderColor(0.7, 0.8, 0.9, 1.0)
+	local alpha = Api.Aura.PredBuffActive(Quiver.L.Spell["Aspect of the Pack"]) and 1.0 or 0.0
+	frame:SetBackdropBorderColor(0.7, 0.8, 0.9, alpha)
+
+	if UnitOnTaxi("player") and Quiver_Store.IsLockedFrames then
+		frame:Hide()
 	else
-		frame:SetBackdropBorderColor(0.7, 0.8, 0.9, 0.0)
+		frame:Show()
 	end
-	frame:Show()
 end
 
 local setFramePosition = function(f, s)
