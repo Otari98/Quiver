@@ -18,6 +18,19 @@ local MINUTES_LEFT_WARNING = 5
 -- ************ State ************
 local aura = (function()
 	local knowsAura, isActive, lastUpdate, timeLeft = false, false, 1800, 0
+	local textureFull = function()
+		frame.Icon:SetAlpha(0.75)
+		frame:SetBackdropBorderColor(1, 0, 0, 0.8)
+	end
+	local textureOff = function()
+		updateDelay = UPDATE_DELAY_SLOW
+		frame.Icon:SetAlpha(0.0)
+		frame:SetBackdropBorderColor(0, 0, 0, 0)
+	end
+	local texturePartial = function()
+		frame.Icon:SetAlpha(0.4)
+		frame:SetBackdropBorderColor(0, 0, 0, 0.1)
+	end
 	return {
 		ShouldUpdate = function(elapsed)
 			lastUpdate = lastUpdate + elapsed
@@ -25,20 +38,19 @@ local aura = (function()
 		end,
 		UpdateUI = function()
 			knowsAura = Api.Spell.PredSpellLearned(Quiver.L.Spell["Trueshot Aura"])
-				or not Quiver_Store.IsLockedFrames
 			isActive, timeLeft = Api.Aura.GetIsActiveAndTimeLeftByTexture(Const.Icon.TrueshotAura)
 			lastUpdate = 0
 
-			if not Quiver_Store.IsLockedFrames or knowsAura and not isActive then
-				frame.Icon:SetAlpha(0.75)
-				frame:SetBackdropBorderColor(1, 0, 0, 0.8)
+			if not Quiver_Store.IsLockedFrames then
+				textureFull()
+			elseif UnitOnTaxi("player") then
+				textureOff()
+			elseif knowsAura and not isActive then
+				textureFull()
 			elseif knowsAura and isActive and timeLeft > 0 and timeLeft < MINUTES_LEFT_WARNING * 60 then
-				frame.Icon:SetAlpha(0.4)
-				frame:SetBackdropBorderColor(0, 0, 0, 0.1)
+				texturePartial()
 			else
-				updateDelay = UPDATE_DELAY_SLOW
-				frame.Icon:SetAlpha(0.0)
-				frame:SetBackdropBorderColor(0, 0, 0, 0)
+				textureOff()
 			end
 		end,
 	}
@@ -57,15 +69,11 @@ end
 local createUI = function()
 	local f = CreateFrame("Frame", nil, UIParent)
 	f:SetFrameStrata("LOW")
-	f:SetBackdrop({
-		edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-		edgeSize = 16,
-		insets = { left=INSET, right=INSET, top=INSET, bottom=INSET },
-	})
+	f:SetBackdrop({ edgeFile = "Interface/Tooltips/UI-Tooltip-Border", edgeSize = 20 })
 	setFramePosition(f, store)
 
-	f.Icon = CreateFrame("Frame", nil, f)
-	f.Icon:SetBackdrop({ bgFile = Const.Icon.TrueshotAura, tile = false })
+	f.Icon = f:CreateTexture(nil, "BACKGROUND")
+	f.Icon:SetTexture(Const.Icon.TrueshotAura)
 	f.Icon:SetPoint("Left", f, "Left", INSET, 0)
 	f.Icon:SetPoint("Right", f, "Right", -INSET, 0)
 	f.Icon:SetPoint("Top", f, "Top", 0, -INSET)
@@ -80,11 +88,13 @@ end
 --- @type Event[]
 local _EVENTS = {
 	"PLAYER_AURAS_CHANGED",
+	"UNIT_FLAGS", -- For hiding alert on taxi
 	"SPELLS_CHANGED",-- Open or click thru spellbook, learn/unlearn spell
 }
 local handleEvent = function()
 	if event == "SPELLS_CHANGED" and arg1 ~= "LeftButton"
 		or event == "PLAYER_AURAS_CHANGED"
+		or event == "UNIT_FLAGS" and arg1 == "player"
 	then
 		aura.UpdateUI()
 	end
