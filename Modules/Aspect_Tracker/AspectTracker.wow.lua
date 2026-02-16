@@ -33,30 +33,28 @@ end
 
 -- ************ UI ************
 local updateUI = function()
+	if UnitOnTaxi("player") and Quiver_Store.IsLockedFrames then
+		frame:Hide()
+		return
+	end
+
 	local activeTexture = chooseIconTexture()
 	if activeTexture then
-		frame.Icon:SetBackdrop({ bgFile = activeTexture, tile = false })
-		frame.Icon:SetAlpha(TRANSPARENCY)
+		frame.Icon:SetTexture(activeTexture)
+		frame.Icon:Show()
 	else
-		frame.Icon:SetAlpha(0.0)
+		frame.Icon:Hide()
 	end
 
 	-- Exclude Pack from main texture, since party members can apply it.
 	-- I don't have a simple way of detecting who cast it, because
 	-- the cancellable bit is 1 even if a party member cast it.
 	if Api.Aura.PredBuffActive(Quiver.L.Spell["Aspect of the Pack"]) then
-		frame:SetBackdrop({
-			bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-			edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-			edgeSize = 20,
-			insets = { left=INSET, right=INSET, top=INSET, bottom=INSET },
-			tile = false,
-		})
 		frame:SetBackdropBorderColor(0.7, 0.8, 0.9, 1.0)
 	else
-		frame:SetBackdrop({ bgFile = "Interface/BUTTONS/WHITE8X8", tile = false })
+		frame:SetBackdropBorderColor(0.7, 0.8, 0.9, 0.0)
 	end
-	frame:SetBackdropColor(0, 0, 0, 0)
+	frame:Show()
 end
 
 local setFramePosition = function(f, s)
@@ -71,13 +69,15 @@ end
 local createUI = function()
 	local f = CreateFrame("Frame", nil, UIParent)
 	f:SetFrameStrata("LOW")
+	f:SetBackdrop({ edgeFile = "Interface/Tooltips/UI-Tooltip-Border", edgeSize = 20 })
 	setFramePosition(f, store)
 
-	f.Icon = CreateFrame("Frame", nil, f)
+	f.Icon = f:CreateTexture(nil, "BACKGROUND")
 	f.Icon:SetPoint("Left", f, "Left", INSET, 0)
 	f.Icon:SetPoint("Right", f, "Right", -INSET, 0)
 	f.Icon:SetPoint("Top", f, "Top", 0, -INSET)
 	f.Icon:SetPoint("Bottom", f, "Bottom", 0, INSET)
+	f.Icon:SetAlpha(TRANSPARENCY)
 
 	FrameLock.SideEffectMakeMoveable(f, store)
 	FrameLock.SideEffectMakeResizeable(f, store, { GripMargin=0 })
@@ -88,11 +88,13 @@ end
 --- @type Event[]
 local _EVENTS = {
 	"PLAYER_AURAS_CHANGED",
+	"UNIT_FLAGS", -- For hiding tracker on taxi
 	"SPELLS_CHANGED",-- Open or click thru spellbook, learn/unlearn spell
 }
 local handleEvent = function()
 	if event == "SPELLS_CHANGED" and arg1 ~= "LeftButton"
 		or event == "PLAYER_AURAS_CHANGED"
+		or event == "UNIT_FLAGS" and arg1 == "player"
 	then
 		updateUI()
 	end
