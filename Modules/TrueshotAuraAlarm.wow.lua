@@ -18,38 +18,39 @@ local MINUTES_LEFT_WARNING = 5
 -- ************ State ************
 local aura = (function()
 	local knowsAura, isActive, lastUpdate, timeLeft = false, false, 1800, 0
+	local textureFull = function()
+		frame.Icon:SetAlpha(0.75)
+		frame:SetBackdropBorderColor(1, 0, 0, 0.8)
+	end
+	local textureOff = function()
+		updateDelay = UPDATE_DELAY_SLOW
+		frame.Icon:SetAlpha(0.0)
+		frame:SetBackdropBorderColor(0, 0, 0, 0)
+	end
+	local texturePartial = function()
+		frame.Icon:SetAlpha(0.4)
+		frame:SetBackdropBorderColor(0, 0, 0, 0.1)
+	end
 	return {
 		ShouldUpdate = function(elapsed)
 			lastUpdate = lastUpdate + elapsed
 			return knowsAura and lastUpdate > updateDelay
 		end,
 		UpdateUI = function()
-			if not Quiver_Store.IsLockedFrames then
-				frame.Icon:SetAlpha(0.75)
-				frame:SetBackdropBorderColor(1, 0, 0, 0.8)
-				return
-			end
-
-			if UnitOnTaxi("player") then
-				frame.Icon:SetAlpha(0.0)
-				frame:SetBackdropBorderColor(0, 0, 0, 0)
-				return
-			end
-
 			knowsAura = Api.Spell.PredSpellLearned(Quiver.L.Spell["Trueshot Aura"])
 			isActive, timeLeft = Api.Aura.GetIsActiveAndTimeLeftByTexture(Const.Icon.TrueshotAura)
 			lastUpdate = 0
 
-			if knowsAura and not isActive then
-				frame.Icon:SetAlpha(0.75)
-				frame:SetBackdropBorderColor(1, 0, 0, 0.8)
+			if not Quiver_Store.IsLockedFrames then
+				textureFull()
+			elseif UnitOnTaxi("player") then
+				textureOff()
+			elseif knowsAura and not isActive then
+				textureFull()
 			elseif knowsAura and isActive and timeLeft > 0 and timeLeft < MINUTES_LEFT_WARNING * 60 then
-				frame.Icon:SetAlpha(0.4)
-				frame:SetBackdropBorderColor(0, 0, 0, 0.1)
+				texturePartial()
 			else
-				updateDelay = UPDATE_DELAY_SLOW
-				frame.Icon:SetAlpha(0.0)
-				frame:SetBackdropBorderColor(0, 0, 0, 0)
+				textureOff()
 			end
 		end,
 	}
